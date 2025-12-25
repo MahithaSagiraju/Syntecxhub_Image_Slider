@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Responsive Image Slider / Carousel</title>
+<style>
+	/* Basic reset */
+	* { box-sizing: border-box; margin: 0; padding: 0; }
+
+	:root{
+		--bg-start: #1a1a2e;
+		--bg-end: #16213e;
+		--accent-a: #0f3460;
+		--accent-b: #e94560;
+		--accent-c: #f39c12;
+		--glass: rgba(255,255,255,0.08);
+		--text-light: #ffffff;
+		--shadow-dark: rgba(0,0,0,0.5);
+	}
+
+	/* Page layout with dark gradient background */
+	body {
+		font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+		background: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+		color: var(--text-light);
+		padding: 36px;
+		display: flex;
+		justify-content: center;
+		align-items: flex-start;
+		min-height: 100vh;
+	}
+
+	/* Slider container with dark theme and enhanced glass effect */
+	.slider {
+		width: 100%;
+		max-width: 1060px;
+		position: relative;
+		overflow: hidden;
+		border-radius: 16px;
+		background: linear-gradient(180deg, rgba(0,0,0,0.2), rgba(0,0,0,0.1));
+		padding: 6px; /* space for colored border effect */
+		box-shadow: 0 20px 60px var(--shadow-dark);
+		backdrop-filter: blur(10px);
+	}
+
+	/* inner area holds the real slider look */
+	.slider > .inner {
+		border-radius: 12px;
+		overflow: hidden;
+		background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+		position: relative;
+	}
+
+	/* Decorative gradient frame */
+	.slider::before {
+		content: "";
+		position: absolute;
+		z-index: 5;
+		left: 0; right: 0; top: 0; bottom: 0;
+		pointer-events: none;
+		border-radius: 16px;
+		background: conic-gradient(from 180deg at 50% 50%, rgba(15,52,96,0.15), rgba(233,69,96,0.12), rgba(243,156,18,0.12), rgba(15,52,96,0.15));
+		mix-blend-mode: overlay;
+	}
+
+	/* Slides wrapper: use flex row and transform to scroll */
+	.slides {
+		display: flex;
+		transition: transform 600ms cubic-bezier(.22,.9,.36,1);
+		will-change: transform;
+	}
+
+	.slide {
+		min-width: 100%;
+		flex-shrink: 0;
+		/* Maintain a responsive height: use clamp to adapt */
+		height: clamp(220px, 36vw, 560px);
+		position: relative;
+		overflow: hidden;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	/* colorful overlay per slide for a stylized look */
+	.slide::after{
+		content: "";
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		mix-blend-mode: multiply;
+		opacity: 0.5;
+		transition: opacity 450ms ease;
+	}
+	.slide:nth-child(1)::after { background: linear-gradient(120deg, rgba(15,52,96,0.3), rgba(233,69,96,0.15)); }
+	.slide:nth-child(2)::after { background: linear-gradient(120deg, rgba(233,69,96,0.25), rgba(243,156,18,0.18)); }
+	.slide:nth-child(3)::after { background: linear-gradient(120deg, rgba(243,156,18,0.28), rgba(236,72,153,0.12)); }
+	.slide:nth-child(4)::after { background: linear-gradient(120deg, rgba(236,72,153,0.25), rgba(15,52,96,0.12)); }
+
+	.slide img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover; /* scale/crop nicely across sizes */
+		display: block;
+		user-select: none;
+		-webkit-user-drag: none;
+		transition: transform 800ms cubic-bezier(.22,.9,.36,1);
+	}
+
+	/* active slide subtle zoom and overlay visibility */
+	.slide.active img { transform: scale(1.04); }
+	.slide.active::after { opacity: 0.3; }
+
+	/* Overlay caption area with dark theme accent */
+	.caption {
+		position: absolute;
+		left: 18px;
+		bottom: 18px;
+		background: linear-gradient(90deg, rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+		color: var(--text-light);
+		padding: 12px 16px;
+		border-radius: 12px;
+		font-size: 1rem;
+		backdrop-filter: blur(8px);
+		box-shadow: 0 8px 25px var(--shadow-dark);
+		transform: translateY(8px);
+		opacity: 0;
+		transition: transform 420ms cubic-bezier(.2,.9,.3,1), opacity 420ms ease;
+	}
+	.slide.active .caption { transform: translateY(0); opacity: 1; }
+
+	/* Navigation buttons (Prev / Next) */
+	.nav-btn {
+		position: absolute;
+		top: 50%;
+		transform: translateY(-50%);
+		z-index: 20;
+		background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+		border: 1px solid rgba(255,255,255,0.2);
+		padding: 16px 18px; /* touch-friendly size */
+		border-radius: 999px;
+		box-shadow: 0 12px 35px var(--shadow-dark);
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: transform 200ms ease, background 200ms ease, box-shadow 200ms ease;
+		color: var(--text-light);
+		backdrop-filter: blur(6px);
+	}
+
+	.nav-btn:hover { transform: translateY(-50%) scale(1.08); background: linear-gradient(180deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08)); box-shadow: 0 15px 40px var(--shadow-dark); }
+	.nav-btn:active { transform: translateY(-50%) scale(0.96); }
+
+	.nav-btn svg { width: 20px; height: 20px; display: block; stroke: currentColor; }
+
+	.nav-prev { left: 14px; }
+	.nav-next { right: 14px; }
+
+	/* Dots indicators - dark theme */
+	.dots {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		bottom: 16px;
+		display: flex;
+		gap: 12px;
+		z-index: 30;
+	}
+
+	.dot {
+		width: 14px;
+		height: 14px;
+		border-radius: 50%;
+		background: rgba(255,255,255,0.2);
+		border: 1px solid rgba(255,255,255,0.4);
+		cursor: pointer;
+		transition: transform 300ms cubic-bezier(.2,.9,.3,1), background 300ms ease, box-shadow 300ms ease;
+	}
+
+	.dot[aria-current="true"] {
+		background: linear-gradient(90deg, var(--accent-b), var(--accent-c));
+		transform: scale(1.5);
+		box-shadow: 0 10px 25px var(--shadow-dark);
+		border: none;
+	}
+
+	/* Accessibility focus styles */
+	.nav-btn:focus, .dot:focus {
+		outline: 3px solid var(--accent-b);
+		outline-offset: 4px;
+	}
+
+	/* Responsive tweaks */
+	@media (max-width: 600px) {
+		.nav-btn { padding: 12px 14px; }
+		.nav-btn svg { width: 16px; height: 16px; }
+		.dot { width: 14px; height: 14px; }
+		.caption { left: 12px; bottom: 12px; font-size: 0.95rem; padding: 8px 10px; }
+	}
+
+	/* Small helper: prevent image dragging on mobile */
+	img { -webkit-touch-callout: none; }
+</style>
+</head>
+<body>
+
+<!-- Slider: single-file, self-contained -->
+	<div class="slider" id="slider" aria-label="Image carousel" role="region" tabindex="0">
+		<div class="inner">
+	<!-- Slides wrapper -->
+	<div class="slides" id="slides">
+		<!-- Each slide: update src to your own images or use placeholders -->
+		<div class="slide">
+			<img src="https://picsum.photos/id/1018/1600/900" alt="Scenic mountains" draggable="false" />
+			<div class="caption">Scenic mountains</div>
+		</div>
+		<div class="slide">
+			<img src="https://picsum.photos/id/1025/1600/900" alt="Calm lake" draggable="false" />
+			<div class="caption">Calm lake</div>
+		</div>
+		<div class="slide">
+			<img src="https://picsum.photos/id/1039/1600/900" alt="Desert dunes" draggable="false" />
+			<div class="caption">Desert dunes</div>
+		</div>
+		<div class="slide">
+			<img src="https://picsum.photos/id/1043/1600/900" alt="Forest path" draggable="false" />
+			<div class="caption">Forest path</div>
+		</div>
+	</div>
+
+	<!-- Prev / Next buttons -->
+	<button class="nav-btn nav-prev" id="prevBtn" aria-label="Previous slide">
+		<!-- simple left chevron -->
+		<svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+			<path d="M12.5 15L7.5 10L12.5 5" stroke="#0b1220" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+		</svg>
+	</button>
+
+	<button class="nav-btn nav-next" id="nextBtn" aria-label="Next slide">
+		<svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+			<path d="M7.5 5L12.5 10L7.5 15" stroke="#0b1220" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+		</svg>
+	</button>
+
+	<!-- Dots -->
+	<div class="dots" id="dots" role="tablist" aria-label="Slide indicators"></div>
+</div>
+
+<script>
+/*
+	Responsive Image Slider / Carousel
+	- Shows slides in a horizontal row and transitions using transform + transition.
+	- Autoplays every 3 seconds via setInterval.
+	- Pauses when mouse is over the slider, resumes on mouse leave.
+	- Dots indicate current slide and are clickable.
+	- Supports touch swipe navigation.
+	- No external libraries.
+*/
+
+/* ====== Configuration ====== */
+const AUTOPLAY_DELAY = 3000; // milliseconds
+const TRANSITION_DURATION = 600; // should match CSS transition time (ms)
+const SWIPE_THRESHOLD = 40; // pixels needed to trigger swipe
+
+/* ====== DOM references ====== */
+const sliderEl = document.getElementById('slider');
+const slidesEl = document.getElementById('slides');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const dotsContainer = document.getElementById('dots');
+
+/* ====== State ====== */
+const slides = Array.from(document.querySelectorAll('.slide'));
+let currentIndex = 0;
+const slideCount = slides.length;
+let autoplayTimer = null;
+let isTransitioning = false;
+
+/* ====== Build dots dynamically ====== */
+function createDots() {
+	for (let i = 0; i < slideCount; i++) {
+		const dot = document.createElement('button');
+		dot.className = 'dot';
+		dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+		dot.setAttribute('role', 'tab');
+		dot.dataset.index = i;
+		if (i === 0) dot.setAttribute('aria-current', 'true');
+		dotsContainer.appendChild(dot);
+
+		dot.addEventListener('click', (e) => {
+			const idx = Number(e.currentTarget.dataset.index);
+			goToSlide(idx);
+			resetAutoplay();
+		});
+	}
+}
+createDots();
+
+/* ====== Core navigation ====== */
+function updateDots() {
+	const dots = Array.from(dotsContainer.children);
+	dots.forEach((dot, idx) => {
+		if (idx === currentIndex) dot.setAttribute('aria-current', 'true');
+		else dot.removeAttribute('aria-current');
+	});
+}
+
+function setSlidePosition(index) {
+	// translateX to show requested slide; percentage equals index * 100
+	slidesEl.style.transform = `translateX(${-index * 100}%)`;
+}
+
+/* Navigate to specific slide (with bounds handling) */
+function goToSlide(index) {
+	if (isTransitioning) return;
+	isTransitioning = true;
+
+	// normalize index to [0, slideCount-1]
+	currentIndex = ((index % slideCount) + slideCount) % slideCount;
+	setSlidePosition(currentIndex);
+	updateDots();
+	// update active class on slides for CSS-driven effects
+	slides.forEach((s, i) => s.classList.toggle('active', i === currentIndex));
+
+	// wait for transition to end (approx)
+	setTimeout(() => { isTransitioning = false; }, TRANSITION_DURATION + 50);
+}
+
+/* Convenience: next / prev */
+function nextSlide() { goToSlide(currentIndex + 1); }
+function prevSlide() { goToSlide(currentIndex - 1); }
+
+/* ====== Autoplay logic ====== */
+function startAutoplay() {
+	stopAutoplay();
+	autoplayTimer = setInterval(() => {
+		nextSlide();
+	}, AUTOPLAY_DELAY);
+}
+
+function stopAutoplay() {
+	if (autoplayTimer) {
+		clearInterval(autoplayTimer);
+		autoplayTimer = null;
+	}
+}
+
+function resetAutoplay() {
+	// restart to give user fresh delay after manual interaction
+	startAutoplay();
+}
+
+/* ====== Pause on hover and resume ====== */
+sliderEl.addEventListener('mouseenter', () => {
+	stopAutoplay();
+});
+sliderEl.addEventListener('mouseleave', () => {
+	startAutoplay();
+});
+
+/* ====== Button listeners ====== */
+prevBtn.addEventListener('click', () => {
+	prevSlide();
+	resetAutoplay();
+});
+nextBtn.addEventListener('click', () => {
+	nextSlide();
+	resetAutoplay();
+});
+
+/* ====== Keyboard accessibility (left / right) ====== */
+sliderEl.addEventListener('keydown', (e) => {
+	if (e.key === 'ArrowLeft') { prevSlide(); resetAutoplay(); }
+	if (e.key === 'ArrowRight') { nextSlide(); resetAutoplay(); }
+});
+
+/* ====== Touch / swipe support for mobile ====== */
+let touchStartX = 0;
+let touchCurrentX = 0;
+let isTouchMoving = false;
+
+sliderEl.addEventListener('touchstart', (e) => {
+	stopAutoplay();
+	const t = e.touches[0];
+	touchStartX = t.clientX;
+	isTouchMoving = true;
+}, { passive: true });
+
+sliderEl.addEventListener('touchmove', (e) => {
+	if (!isTouchMoving) return;
+	const t = e.touches[0];
+	touchCurrentX = t.clientX;
+	// We can implement subtle slide follow if desired (optional).
+}, { passive: true });
+
+sliderEl.addEventListener('touchend', () => {
+	if (!isTouchMoving) return;
+	const dist = touchCurrentX - touchStartX;
+	if (Math.abs(dist) > SWIPE_THRESHOLD) {
+		if (dist < 0) nextSlide();
+		else prevSlide();
+	}
+	isTouchMoving = false;
+	startAutoplay();
+});
+
+/* Prevent accidental image drag/start on mobile */
+sliderEl.addEventListener('dragstart', (e) => e.preventDefault());
+
+/* ====== Initialize position and autoplay ====== */
+setSlidePosition(0);
+// mark initial active slide for styles
+slides.forEach((s, i) => s.classList.toggle('active', i === 0));
+startAutoplay();
+
+/* ====== Resize handling: ensure correct transform if layout changes ====== */
+window.addEventListener('resize', () => {
+	// reapply transform to avoid any rounding shift
+	setSlidePosition(currentIndex);
+});
+
+/* End of slider logic */
+</script>
+</body>
+</html>
+
+
